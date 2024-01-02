@@ -392,7 +392,7 @@ void facedetection_task(void)
     }
 #endif
     // Send result through the uart to the crazyflie as single characters
-    pi_uart_write(&uart, &ClusterCall.num_reponse, 1);
+    // pi_uart_write(&uart, &ClusterCall.num_reponse, 1);
 
     nb_frames++;
 
@@ -422,6 +422,15 @@ void facedetection_task(void)
         memcpy(&txPacket.data[INT_SIZE * DATA_INDEX_SCORE], &ClusterCall.reponses[i].score, INT_SIZE);
 
         txPacket.dataLength = INT_SIZE * DATA_INDEX_SIZE;
+
+        cpxPrintToConsole(LOG_TO_CRTP,
+          "[AI Deck Send] \t X: %d, Y: %d, W: %d, H: %d, Score: %d\n",
+          ClusterCall.reponses[i].x,
+          ClusterCall.reponses[i].y,
+          ClusterCall.reponses[i].w,
+          ClusterCall.reponses[i].h,
+          ClusterCall.reponses[i].score
+        );
 
         cpxSendPacketBlocking(&txPacket);
       } //if
