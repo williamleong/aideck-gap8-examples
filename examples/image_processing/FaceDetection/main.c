@@ -64,6 +64,9 @@ static int wifiClientConnected = 0;
 static pi_task_t task1;
 
 static CPXPacket_t rxp;
+
+static CPXPacket_t txPacketBoundingBox;
+
 void rx_task(void *parameters)
 {
   while (1)
@@ -392,7 +395,39 @@ void facedetection_task(void)
     pi_uart_write(&uart, &ClusterCall.num_reponse, 1);
 
     nb_frames++;
-  }
+
+    /*********************************
+     * Send X/Y/W/H to CPX
+     *********************************/
+    for (unsigned char i = 0; i < ClusterCall.num_reponse; i++)
+    {
+      if (ClusterCall.reponses[i].x!=-1)
+      {
+        static const uint8_t DATA_INDEX_X = 0;
+        static const uint8_t DATA_INDEX_Y = 1;
+        static const uint8_t DATA_INDEX_W = 2;
+        static const uint8_t DATA_INDEX_H = 3;
+        static const uint8_t DATA_INDEX_SCORE = 4;
+        static const uint8_t DATA_INDEX_SIZE = 5;
+
+        static size_t INT_SIZE = sizeof(int);
+        static CPXPacket_t txPacket;
+
+        cpxInitRoute(CPX_T_GAP8, CPX_T_STM32, CPX_F_APP, &txPacket.route);
+
+        memcpy(&txPacket.data[INT_SIZE * DATA_INDEX_X], &ClusterCall.reponses[i].x, INT_SIZE);
+        memcpy(&txPacket.data[INT_SIZE * DATA_INDEX_Y], &ClusterCall.reponses[i].y, INT_SIZE);
+        memcpy(&txPacket.data[INT_SIZE * DATA_INDEX_W], &ClusterCall.reponses[i].w, INT_SIZE);
+        memcpy(&txPacket.data[INT_SIZE * DATA_INDEX_H], &ClusterCall.reponses[i].h, INT_SIZE);
+        memcpy(&txPacket.data[INT_SIZE * DATA_INDEX_SCORE], &ClusterCall.reponses[i].score, INT_SIZE);
+
+        txPacket.dataLength = INT_SIZE * DATA_INDEX_SIZE;
+
+        cpxSendPacketBlocking(&txPacket);
+      } //if
+    } //for
+
+  } //while
   cpxPrintToConsole(LOG_TO_CRTP, "Test face detection done.\n");
   pmsis_exit(0);
 }
@@ -422,6 +457,7 @@ void start_example(void)
 {
   cpxInit();
   cpxEnableFunction(CPX_F_WIFI_CTRL);
+  cpxEnableFunction(CPX_F_APP);
 
   cpxPrintToConsole(LOG_TO_CRTP, "-- WiFi image streamer example --\n");
 
