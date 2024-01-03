@@ -93,11 +93,6 @@ void rx_task(void *parameters)
   }
 }
 
-static void capture_done_cb(void *arg)
-{
-  xEventGroupSetBits(evGroup, CAPTURE_DONE_BIT);
-}
-
 typedef struct
 {
   uint8_t magic;
@@ -195,6 +190,11 @@ struct pi_cluster_task *task;
 struct pi_cluster_conf conf;
 ArgCluster_T ClusterCall;
 
+static void capture_done_cb(void *arg)
+{
+  xEventGroupSetBits(evGroup, CAPTURE_DONE_BIT);
+}
+
 // Open himax camera funciton
 static int open_camera_himax(struct pi_device *device)
 {
@@ -249,7 +249,28 @@ static void led_handle(void *arg)
   pi_task_push_delayed_us(pi_task_callback(&led_task, led_handle, NULL), 500000);
 }
 
+static void himax_set_register(uint32_t reg_addr, uint8_t value)
+{
+  uint8_t set_value = value;
+  // uint8_t get_value;
+  pi_camera_reg_set(&cam, reg_addr, &set_value);
+  // pi_time_wait_us(1000000);
+  // pi_camera_reg_get(&camera, reg_addr, &get_value);
+  // if (set_value != get_value)
+  // {
+  //   cpxPrintToConsole(LOG_TO_CRTP, "Failed to set camera register %d\n", reg_addr);
+  // }
+}
 
+//https://github.com/bitcraze/aideck-gap8-examples/issues/63
+static void enable_auto_exposure()
+{
+  himax_set_register(0x2100, 0x1); // AE_CTRL
+  himax_set_register(0x0205, 0x10); // ANALOG_GLOBAL_GAIN: 0x10 = 2x, 0x20 = 4x
+
+  // This is needed for the camera to actually update its registers.
+  himax_set_register(0x0104, 0x1);
+}
 
 void facedetection_task(void)
 {
@@ -362,20 +383,31 @@ void facedetection_task(void)
 
   while (1 && (NB_FRAMES == -1 || nb_frames < NB_FRAMES))
   {
-    // Capture image
-    pi_camera_capture_async(&cam, imgBuff0, CAM_WIDTH * CAM_HEIGHT, pi_task_callback(&task1, capture_done_cb, NULL));
+    // // Capture image
+    // pi_camera_capture_async(&cam, imgBuff0, CAM_WIDTH * CAM_HEIGHT, pi_task_callback(&task1, capture_done_cb, NULL));
+    // pi_camera_control(&cam, PI_CAMERA_CMD_START, 0);
+    // // it should really not take longer than 500ms to acquire an image, maybe we could even time out earlier
+    // evBits = xEventGroupWaitBits(evGroup, CAPTURE_DONE_BIT, pdTRUE, pdFALSE, (TickType_t)(500/portTICK_PERIOD_MS));
+    // pi_camera_control(&cam, PI_CAMERA_CMD_STOP, 0);
+    // // if we didn't succeed in capturing the image (which, especially with high cluster frequencies and dark images can happen) we want to retry
+    // while((evBits & CAPTURE_DONE_BIT) != CAPTURE_DONE_BIT)
+    // {
+    //   cpxPrintToConsole(LOG_TO_CRTP, "Failed camera acquisition\n");
+    //   pi_camera_control(&cam, PI_CAMERA_CMD_START, 0);
+    //   evBits = xEventGroupWaitBits(evGroup, CAPTURE_DONE_BIT, pdTRUE, pdFALSE, (TickType_t)(500/portTICK_PERIOD_MS));
+    //   pi_camera_control(&cam, PI_CAMERA_CMD_STOP, 0);
+    // }
+
+    //enable_auto_exposure needs to be set twice at these specific points
+    enable_auto_exposure();
+
     pi_camera_control(&cam, PI_CAMERA_CMD_START, 0);
-    // it should really not take longer than 500ms to acquire an image, maybe we could even time out earlier
-    evBits = xEventGroupWaitBits(evGroup, CAPTURE_DONE_BIT, pdTRUE, pdFALSE, (TickType_t)(500/portTICK_PERIOD_MS));
+
+    pi_camera_capture(&cam, imgBuff0, CAM_WIDTH*CAM_HEIGHT);
+
+    enable_auto_exposure();
+
     pi_camera_control(&cam, PI_CAMERA_CMD_STOP, 0);
-    // if we didn't succeed in capturing the image (which, especially with high cluster frequencies and dark images can happen) we want to retry
-    while((evBits & CAPTURE_DONE_BIT) != CAPTURE_DONE_BIT)
-    {
-      cpxPrintToConsole(LOG_TO_CRTP, "Failed camera acquisition\n");
-      pi_camera_control(&cam, PI_CAMERA_CMD_START, 0);
-      evBits = xEventGroupWaitBits(evGroup, CAPTURE_DONE_BIT, pdTRUE, pdFALSE, (TickType_t)(500/portTICK_PERIOD_MS));
-      pi_camera_control(&cam, PI_CAMERA_CMD_STOP, 0);
-    }
 
     // Send task to the cluster and print response
     pi_cluster_send_task_to_cl(&cluster_dev, task);
