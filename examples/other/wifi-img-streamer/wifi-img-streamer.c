@@ -143,9 +143,25 @@ uint32_t footerSize;
 pi_buffer_t jpeg_data;
 uint32_t jpegSize;
 
-static StreamerMode_t streamerMode = RAW_ENCODING;
+static StreamerMode_t streamerMode = JPEG_ENCODING;
 
 static CPXPacket_t txp;
+
+//https://github.com/bitcraze/aideck-gap8-examples/issues/63
+static void himax_set_register(uint32_t reg_addr, uint8_t value)
+{
+  uint8_t set_value = value;
+  pi_camera_reg_set(&camera, reg_addr, &set_value);
+}
+
+static void enable_auto_exposure()
+{
+  himax_set_register(0x2100, 0x1); // AE_CTRL
+  himax_set_register(0x0205, 0x10); // ANALOG_GLOBAL_GAIN: 0x10 = 2x, 0x20 = 4x
+
+  // This is needed for the camera to actually update its registers.
+  himax_set_register(0x0104, 0x1);
+}
 
 void createImageHeaderPacket(CPXPacket_t * packet, uint32_t imgSize, StreamerMode_t imgType) {
   img_header_t *imgHeader = (img_header_t *) packet->data;
@@ -266,10 +282,20 @@ void camera_task(void *parameters)
     if (wifiClientConnected == 1)
     {
       start = xTaskGetTickCount();
+
+      enable_auto_exposure();
+
+      //Async
       pi_camera_capture_async(&camera, imgBuff, resolution, pi_task_callback(&task1, capture_done_cb, NULL));
       pi_camera_control(&camera, PI_CAMERA_CMD_START, 0);
       xEventGroupWaitBits(evGroup, CAPTURE_DONE_BIT, pdTRUE, pdFALSE, (TickType_t)portMAX_DELAY);
       pi_camera_control(&camera, PI_CAMERA_CMD_STOP, 0);
+
+      //Synchronous
+      // pi_camera_control(&camera, PI_CAMERA_CMD_START, 0);
+      // pi_camera_capture(&camera, imgBuff, CAM_WIDTH*CAM_HEIGHT);
+      // pi_camera_control(&camera, PI_CAMERA_CMD_STOP, 0);
+
       captureTime = xTaskGetTickCount() - start;
 
       if (streamerMode == JPEG_ENCODING)
