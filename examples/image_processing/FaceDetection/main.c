@@ -398,15 +398,10 @@ void facedetection_task(void)
     //   pi_camera_control(&cam, PI_CAMERA_CMD_STOP, 0);
     // }
 
-    //enable_auto_exposure needs to be set twice at these specific points
     enable_auto_exposure();
 
     pi_camera_control(&cam, PI_CAMERA_CMD_START, 0);
-
     pi_camera_capture(&cam, imgBuff0, CAM_WIDTH*CAM_HEIGHT);
-
-    enable_auto_exposure();
-
     pi_camera_control(&cam, PI_CAMERA_CMD_STOP, 0);
 
     // Send task to the cluster and print response
