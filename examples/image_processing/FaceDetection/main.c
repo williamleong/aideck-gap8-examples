@@ -249,20 +249,13 @@ static void led_handle(void *arg)
   pi_task_push_delayed_us(pi_task_callback(&led_task, led_handle, NULL), 500000);
 }
 
+//https://github.com/bitcraze/aideck-gap8-examples/issues/63
 static void himax_set_register(uint32_t reg_addr, uint8_t value)
 {
   uint8_t set_value = value;
-  // uint8_t get_value;
   pi_camera_reg_set(&cam, reg_addr, &set_value);
-  // pi_time_wait_us(1000000);
-  // pi_camera_reg_get(&camera, reg_addr, &get_value);
-  // if (set_value != get_value)
-  // {
-  //   cpxPrintToConsole(LOG_TO_CRTP, "Failed to set camera register %d\n", reg_addr);
-  // }
 }
 
-//https://github.com/bitcraze/aideck-gap8-examples/issues/63
 static void enable_auto_exposure()
 {
   himax_set_register(0x2100, 0x1); // AE_CTRL
