@@ -286,15 +286,15 @@ void camera_task(void *parameters)
       enable_auto_exposure();
 
       //Async
-      pi_camera_capture_async(&camera, imgBuff, resolution, pi_task_callback(&task1, capture_done_cb, NULL));
-      pi_camera_control(&camera, PI_CAMERA_CMD_START, 0);
-      xEventGroupWaitBits(evGroup, CAPTURE_DONE_BIT, pdTRUE, pdFALSE, (TickType_t)portMAX_DELAY);
-      pi_camera_control(&camera, PI_CAMERA_CMD_STOP, 0);
+      // pi_camera_capture_async(&camera, imgBuff, resolution, pi_task_callback(&task1, capture_done_cb, NULL));
+      // pi_camera_control(&camera, PI_CAMERA_CMD_START, 0);
+      // xEventGroupWaitBits(evGroup, CAPTURE_DONE_BIT, pdTRUE, pdFALSE, (TickType_t)portMAX_DELAY);
+      // pi_camera_control(&camera, PI_CAMERA_CMD_STOP, 0);
 
       //Synchronous
-      // pi_camera_control(&camera, PI_CAMERA_CMD_START, 0);
-      // pi_camera_capture(&camera, imgBuff, CAM_WIDTH*CAM_HEIGHT);
-      // pi_camera_control(&camera, PI_CAMERA_CMD_STOP, 0);
+      pi_camera_control(&camera, PI_CAMERA_CMD_START, 0);
+      pi_camera_capture(&camera, imgBuff, CAM_WIDTH*CAM_HEIGHT);
+      pi_camera_control(&camera, PI_CAMERA_CMD_STOP, 0);
 
       captureTime = xTaskGetTickCount() - start;
 
