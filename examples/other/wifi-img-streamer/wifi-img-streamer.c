@@ -283,8 +283,6 @@ void camera_task(void *parameters)
     {
       start = xTaskGetTickCount();
 
-      enable_auto_exposure();
-
       //Async
       // pi_camera_capture_async(&camera, imgBuff, resolution, pi_task_callback(&task1, capture_done_cb, NULL));
       // pi_camera_control(&camera, PI_CAMERA_CMD_START, 0);
@@ -293,6 +291,7 @@ void camera_task(void *parameters)
 
       //Synchronous
       pi_camera_control(&camera, PI_CAMERA_CMD_START, 0);
+      enable_auto_exposure();
       pi_camera_capture(&camera, imgBuff, CAM_WIDTH*CAM_HEIGHT);
       pi_camera_control(&camera, PI_CAMERA_CMD_STOP, 0);
 
