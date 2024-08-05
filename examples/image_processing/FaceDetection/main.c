@@ -259,7 +259,7 @@ static void himax_set_register(uint32_t reg_addr, uint8_t value)
 static void enable_auto_exposure()
 {
   himax_set_register(0x2100, 0x1); // AE_CTRL
-  himax_set_register(0x0205, 0x10); // ANALOG_GLOBAL_GAIN: 0x10 = 2x, 0x20 = 4x
+  // himax_set_register(0x0205, 0x10); // ANALOG_GLOBAL_GAIN: 0x10 = 2x, 0x20 = 4x
 
   // This is needed for the camera to actually update its registers.
   himax_set_register(0x0104, 0x1);
