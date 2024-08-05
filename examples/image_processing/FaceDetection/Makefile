@@ -37,6 +37,8 @@ APP_CFLAGS += -DSTREAM_H=$(STREAM_H)
 APP_INC += ../../../lib/cpx/inc
 APP_CFLAGS += -DconfigUSE_TIMERS=1 -DINCLUDE_xTimerPendFunctionCall=1
 
+CONFIG_GAP_LIB_JPEG = 1
+
 BOARD_NAME ?= ai_deck
 USE_PMSIS_BSP = 1
 

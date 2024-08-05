@@ -29,6 +29,7 @@
 
 /* Gaplib includes */
 // #include "gaplib/ImgIO.h"
+#include "gaplib/jpeg_encoder.h"
 
 #if defined(USE_STREAMER)
 #include "cpx.h"
@@ -117,7 +118,8 @@ uint32_t footerSize;
 pi_buffer_t jpeg_data;
 uint32_t jpegSize;
 
-static StreamerMode_t streamerMode = RAW_ENCODING;
+static jpeg_encoder_t jpeg_encoder;
+static StreamerMode_t streamerMode = JPEG_ENCODING;
 
 static CPXPacket_t txp;
 
@@ -312,6 +314,37 @@ void facedetection_task(void)
     pmsis_exit(-5);
   }
 
+  // JPEG encoder init
+  struct jpeg_encoder_conf enc_conf;
+  jpeg_encoder_conf_init(&enc_conf);
+  enc_conf.width = CAM_WIDTH;
+  enc_conf.height = CAM_HEIGHT;
+  enc_conf.flags = 0; // Move this to the cluster
+
+  if (jpeg_encoder_open(&jpeg_encoder, &enc_conf))
+  {
+    cpxPrintToConsole(LOG_TO_CRTP, "Failed initialize JPEG encoder\n");
+    return;
+  }
+
+  header.size = 1024;
+  header.data = pmsis_l2_malloc(1024);
+
+  footer.size = 10;
+  footer.data = pmsis_l2_malloc(10);
+
+  // This must fit the full encoded JPEG
+  jpeg_data.size = 1024 * 15;
+  jpeg_data.data = pmsis_l2_malloc(1024 * 15);
+
+  if (header.data == 0 || footer.data == 0 || jpeg_data.data == 0) {
+    cpxPrintToConsole(LOG_TO_CRTP, "Could not allocate memory for JPEG image\n");
+    return;
+  }
+
+  jpeg_encoder_header(&jpeg_encoder, &header, &headerSize);
+  jpeg_encoder_footer(&jpeg_encoder, &footer, &footerSize);
+
   //  UART init with Crazyflie and configure
   pi_uart_conf_init(&uart_conf);
   uart_conf.enable_tx = 1;
@@ -391,9 +424,8 @@ void facedetection_task(void)
     //   pi_camera_control(&cam, PI_CAMERA_CMD_STOP, 0);
     // }
 
-    enable_auto_exposure();
-
     pi_camera_control(&cam, PI_CAMERA_CMD_START, 0);
+    enable_auto_exposure();
     pi_camera_capture(&cam, imgBuff0, CAM_WIDTH*CAM_HEIGHT);
     pi_camera_control(&cam, PI_CAMERA_CMD_STOP, 0);
 
@@ -401,16 +433,42 @@ void facedetection_task(void)
     pi_cluster_send_task_to_cl(&cluster_dev, task);
     // cpxPrintToConsole(LOG_TO_CRTP, "end of face detection, faces detected: %d\n", ClusterCall.num_reponse);
 
-#if defined(USE_STREAMER)
+// #if defined(USE_STREAMER)
     if (wifiClientConnected == 1)
     {
-      // First send information about the image
-      createImageHeaderPacket(&txp, STREAM_W*STREAM_H, RAW_ENCODING);
-      cpxSendPacketBlocking(&txp);
-      // Send image
-      sendBufferViaCPX(&txp, ImageOut, STREAM_W*STREAM_H);
+      if (streamerMode == JPEG_ENCODING)
+      {
+        jpeg_encoder_process(&jpeg_encoder, &buffer, &jpeg_data, &jpegSize);
+
+        ImgSize = headerSize + jpegSize + footerSize;
+
+        // First send information about the image
+        createImageHeaderPacket(&txp, ImgSize, streamerMode);
+        cpxSendPacketBlocking(&txp);
+
+        // First send header
+        memcpy(txp.data, header.data, headerSize);
+        txp.dataLength = headerSize;
+        cpxSendPacketBlocking(&txp);
+
+        // Send image data
+        sendBufferViaCPX(&txp, (uint8_t *)jpeg_data.data, jpegSize);
+
+        // Send footer
+        memcpy(txp.data, footer.data, footerSize);
+        txp.dataLength = footerSize;
+        cpxSendPacketBlocking(&txp);
+      }
+      else
+      {
+        // First send information about the image
+        createImageHeaderPacket(&txp, STREAM_W*STREAM_H, streamerMode);
+        cpxSendPacketBlocking(&txp);
+        // Send image
+        sendBufferViaCPX(&txp, ImageOut, STREAM_W*STREAM_H);
+      }
     }
-#endif
+// #endif
     // Send result through the uart to the crazyflie as single characters
     // pi_uart_write(&uart, &ClusterCall.num_reponse, 1);
 
