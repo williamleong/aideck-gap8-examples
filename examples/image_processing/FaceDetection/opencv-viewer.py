@@ -120,8 +120,9 @@ while(1):
               cv2.imwrite(f"stream_out/raw/img_{count:06d}.png", bayer_img)
           cv2.waitKey(1)
       else:
-          with open("img.jpeg", "wb") as f:
-              f.write(imgStream)
+          if args.save:
+            with open("img.jpeg", "wb") as f:
+                f.write(imgStream)
           nparr = np.frombuffer(imgStream, np.uint8)
           decoded = cv2.imdecode(nparr,cv2.IMREAD_UNCHANGED)
           cv2.imshow('JPEG', decoded)
