@@ -4,3 +4,6 @@
 examples/**/BUILD*
 examples/**/lib*
 BUILD
+/examples/image_processing/FaceDetection/FaceDetKernels.c
+/examples/image_processing/FaceDetection/FaceDetKernels.h
+/examples/image_processing/FaceDetection/GenTile
