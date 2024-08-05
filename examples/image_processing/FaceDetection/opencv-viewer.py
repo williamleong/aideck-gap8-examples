@@ -104,14 +104,14 @@ while(1):
           #print("Chunk size is {} ({:02X}->{:02X})".format(length, src, dst))
           chunk = rx_bytes(length - 2)
           imgStream.extend(chunk)
-     
+
       count = count + 1
-      meanTimePerImage = (time.time()-start) / count
-      print("{}".format(meanTimePerImage))
-      print("{}".format(1/meanTimePerImage))
+      # meanTimePerImage = (time.time()-start) / count
+      # print("{}".format(meanTimePerImage))
+      # print("{}".format(1/meanTimePerImage))
 
       if format == 0:
-          bayer_img = np.frombuffer(imgStream, dtype=np.uint8)   
+          bayer_img = np.frombuffer(imgStream, dtype=np.uint8)
           bayer_img.shape = (stream_h, stream_w)
           cv2.namedWindow('Raw', cv2.WINDOW_NORMAL)
           cv2.resizeWindow('Raw', 600,600)
